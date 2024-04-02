@@ -2,41 +2,11 @@ vim9script
 
 # DictObjectKeyTemplate example/test
 
+import './IDictKey.vim'
+import './DictObjectKey.vim'
 
-###############################################################################
-#
-# helper stuff for generating key from object
-
-# Can consider how best to refactor/share after the following issue resolved.
-# [vim9class] SEGV: problem with static in superclass #14352 
-# https://github.com/vim/vim/issues/14352
-#
-
-# would like a builtin method to generate the key
-# There is both simple_class_name: "ExampleClass"
-# There is both class_name: "<SNR>123_ExampleClass"
-
-# GenerateKey is a good candidate for a builtin,
-# so that we don't have to generate a unique numer.
-
-export interface DictObject
-    #var simple_class_name: string
-    #var class_name: string
-    var as_key: string
-endinterface
-
-var _obj_id_count = 1
-def GenerateKey(simple_class_name: string, sid: string): string
-    var x = sid .. simple_class_name .. '@' .. string(_obj_id_count)
-    _obj_id_count += 1
-    return x
-enddef
-# end helpers
-###############################################################################
-
-
-export class ExampleClass implements DictObject
-    const as_key = GenerateKey('ExampleClass', expand('<SID>'))
+export class ExampleClass implements IDictKey.IDictKey
+    const as_key = IDictKey.GenerateKey()
 endclass
 
 
@@ -46,12 +16,16 @@ endclass
 # With KeyType/ValueType modified 
 #
 
+# if you don't care about strict type checking
+export class YYYExampleClassDict extends DictObjectKey.DictObjectKey
+endclass
+
+
 type ValueType = string
 type KeyType = ExampleClass
 
-export class ExampleClassDict   # would like to implement a dict
 
-    var _d: dict<list<any>>
+export class ExampleClassDict extends DictObjectKey.DictObjectKeyBase
 
     def Put(key: KeyType, value: ValueType)
         this._d[key.as_key] = [ key, value ]
@@ -61,25 +35,15 @@ export class ExampleClassDict   # would like to implement a dict
         return this._d[key.as_key][1]
     enddef
 
-    def KeyToObj(key: string): KeyType
+    def StringKeyToObj(key: string): KeyType
         return this._d[key][0]
     enddef
 
-    ############
-    # BaseDict #
-    ############
-
-    def len(): number
-        return this._d->len()
+    def Keys(): list<KeyType>
+        # can optimize, for loop, inline StringKeyToObj
+        return this._d->keys()->mapnew((i, k) => this.StringKeyToObj(k))
     enddef
 
-    def empty(): bool
-        return this._d->len() == 0
-    enddef
-
-    def Keys(): list<string>
-        return this._d->keys()
-    enddef
 endclass
 
 # end of copy
@@ -111,10 +75,22 @@ echo o1
 d.Put(o1, "1-val")
 d.Put(o2, "2-val")
 echo d.Get(o2)
+def F()
+    var xxx: string = d.Get(o1)
+enddef
+F()
+
+echo '=== Keys()'
 var keys = d.Keys()
 echo keys
-echo d.KeyToObj(keys[0])
-echo d.KeyToObj(keys[1])
+
+echo '=== StringKeys()'
+var skeys = d.StringKeys()
+echo skeys
+
+echo ' '
+echo d.StringKeyToObj(skeys[0])
+echo d.StringKeyToObj(skeys[1])
 
 echo 'len:' d->len()
 echo 'empty:' d->empty()
