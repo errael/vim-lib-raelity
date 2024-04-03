@@ -1,15 +1,10 @@
 vim9script
 
 # A dictionary with "IDictKey" keys and "any" type
-# If you want strict type checking (compile time)
-# copy dict_ok_template and customize the ":type" 
 
-# copied from 'dict_ok_template'
+# See below to get a dictionary with strict type checking (compile time).
 
 import './IDictKey.vim'
-
-type ValueType = any
-type KeyType = IDictKey.IDictKey
 
 # would like to implement a dict
 
@@ -30,14 +25,26 @@ export abstract class DictObjectKeyBase
     enddef
 endclass
 
+##########
+########## For strict type checking,
+##########
+########## import this file to get "DictObjectKeyBase"
+########## copy the following and change ValueType/KeyType as needed.
+##########
+########## Note: "KeyType" must implement "IDictKey.IDictKey".
+##########
+
+type ValueType = any
+type KeyType = IDictKey.IDictKey
+
 export class DictObjectKey extends DictObjectKeyBase
 
     def Put(key: KeyType, value: ValueType)
-        this._d[key.as_key] = [ key, value ]
+        this._d[key.unique_object_id] = [ key, value ]
     enddef
 
     def Get(key: KeyType): ValueType
-        return this._d[key.as_key][1]
+        return this._d[key.unique_object_id][1]
     enddef
 
     def StringKeyToObj(key: string): KeyType

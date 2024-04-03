@@ -6,7 +6,7 @@ import './IDictKey.vim'
 import './DictObjectKey.vim'
 
 export class ExampleClass implements IDictKey.IDictKey
-    const as_key = IDictKey.GenerateKey()
+    const unique_object_id = IDictKey.GenerateKey()
 endclass
 
 
@@ -28,11 +28,11 @@ type KeyType = ExampleClass
 export class ExampleClassDict extends DictObjectKey.DictObjectKeyBase
 
     def Put(key: KeyType, value: ValueType)
-        this._d[key.as_key] = [ key, value ]
+        this._d[key.unique_object_id] = [ key, value ]
     enddef
 
     def Get(key: KeyType): ValueType
-        return this._d[key.as_key][1]
+        return this._d[key.unique_object_id][1]
     enddef
 
     def StringKeyToObj(key: string): KeyType
@@ -52,7 +52,7 @@ endclass
 
 # The following stuff can be in a different file which imports this file
 
-### finish
+finish
 
 ### vim9script
 
