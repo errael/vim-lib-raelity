@@ -1,20 +1,18 @@
 vim9script
 
-# See end of script for usage examples
+# Generated key is of the form "<SNR>45_SomeClass@17".
 
-# pick a variable name: as_key, unique_object_id
-
-#
-# Key is of the form "<SNR>45_SomeClass@17".
-#
-
-export interface IDictKey
+export interface IObjKey
     var unique_object_id: string
 endinterface
 
 # This is a helper sub-class. Or use the interface directly
-export abstract class DictKey implements IDictKey
-    const unique_object_id:  string
+export abstract class ObjKey implements IObjKey
+    const unique_object_id: string
+    # Following fails, see
+    #   [vim9class] vim9 seems to get confused about what file is executing
+    #   https://github.com/vim/vim/issues/14402
+    # const unique_object_id = GenerateKey() 
 endclass
 
 # Return unique key for calling object. Must be called from class "new*".
@@ -27,7 +25,7 @@ enddef
 # following requires at least vim 9.1.255
 
 # Parse the argument stack and find the caller,
-# which is a new method, (if caller is not a new, error)
+# which is a constructor,"new*", (if caller is not a new, error)
 # and return the caller's unique id.
 def ExtractCaller(stack: string): string
     # The caller's frame is the second to the last
@@ -58,9 +56,14 @@ enddef
 #
 finish
 
-# Using the helper abstract class: DictKey
+def Info(arg1: any, arg2: any)
+    echo "NEW STACK:" arg1      ### s1
+    echo "NEW KEY:" arg2        ### l1
+enddef
 
-class C0 extends DictKey
+# Using the helper abstract class: ObjKey
+
+class C0 extends ObjKey
     def new()
         this.unique_object_id = GenerateKey()
     enddef
@@ -72,9 +75,9 @@ class C1 extends C0
     enddef
 endclass
 
-# Using the interface directly: IDictKey
+# Using the interface directly: IObjKey
 
-class C2 implements IDictKey
+class C2 implements IObjKey
     const unique_object_id:  string
     def new()
         this.unique_object_id = GenerateKey()

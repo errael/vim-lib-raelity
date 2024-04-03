@@ -1,14 +1,13 @@
 vim9script
 
-# A dictionary with "IDictKey" keys and "any" type
+# Like a "dict_ok<IObjKey, any>" where key:IObjKey, type:any type
+# See below to create a dictionary with strict type checking (compile time).
 
-# See below to get a dictionary with strict type checking (compile time).
+# var dok = DictObjKey.new()
 
-import './IDictKey.vim'
+import autoload './obj_key.vim'
 
-# would like to implement a dict
-
-export abstract class DictObjectKeyBase 
+export abstract class DictObjKeyBase 
 
     var _d: dict<list<any>>
 
@@ -25,19 +24,15 @@ export abstract class DictObjectKeyBase
     enddef
 endclass
 
-##########
-########## For strict type checking,
-##########
-########## import this file to get "DictObjectKeyBase"
-########## copy the following and change ValueType/KeyType as needed.
-##########
-########## Note: "KeyType" must implement "IDictKey.IDictKey".
-##########
+## For strict type checking, import this file to get "DictObjKeyBase"
+## copy the following and change KeyType/ValueType as needed.
+##
+## Note: "KeyType" must implement "obj_key.IObjKey".
 
 type ValueType = any
-type KeyType = IDictKey.IDictKey
+type KeyType = obj_key.IObjKey
 
-export class DictObjectKey extends DictObjectKeyBase
+export class DictObjKey extends DictObjKeyBase
 
     def Put(key: KeyType, value: ValueType)
         this._d[key.unique_object_id] = [ key, value ]
@@ -52,8 +47,7 @@ export class DictObjectKey extends DictObjectKeyBase
     enddef
 
     def Keys(): list<KeyType>
-        # can optimize, for loop, inline StringKeyToObj
+        # can optimize: for loop, inline StringKeyToObj
         return this._d->keys()->mapnew((i, k) => this.StringKeyToObj(k))
     enddef
-
 endclass
