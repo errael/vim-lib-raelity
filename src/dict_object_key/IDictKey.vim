@@ -2,19 +2,19 @@ vim9script
 
 # See end of script for usage examples
 
-# pick one: as_key, object_id
+# pick a variable name: as_key, unique_object_id
 
 #
 # Key is of the form "<SNR>45_SomeClass@17".
 #
 
 export interface IDictKey
-    var as_key: string
+    var unique_object_id: string
 endinterface
 
 # This is a helper sub-class. Or use the interface directly
 export abstract class DictKey implements IDictKey
-    const as_key:  string
+    const unique_object_id:  string
 endclass
 
 # Return unique key for calling object. Must be called from class "new*".
@@ -62,28 +62,28 @@ finish
 
 class C0 extends DictKey
     def new()
-        this.as_key = GenerateKey()
+        this.unique_object_id = GenerateKey()
     enddef
 endclass
 
 class C1 extends C0
     def new()
-        this.as_key = GenerateKey()
+        this.unique_object_id = GenerateKey()
     enddef
 endclass
 
 # Using the interface directly: IDictKey
 
 class C2 implements IDictKey
-    const as_key:  string
+    const unique_object_id:  string
     def new()
-        this.as_key = GenerateKey()
+        this.unique_object_id = GenerateKey()
     enddef
 endclass
 
 class C3 extends C2
     def new()
-        this.as_key = GenerateKey()
+        this.unique_object_id = GenerateKey()
     enddef
 endclass
 
