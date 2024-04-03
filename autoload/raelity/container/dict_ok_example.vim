@@ -1,31 +1,25 @@
 vim9script
 
-# DictObjectKeyTemplate example/test
+import './obj_key.vim'
+import './dict_ok.vim'
 
-import './IDictKey.vim'
-import './DictObjectKey.vim'
-
-export class ExampleClass implements IDictKey.IDictKey
-    const unique_object_id = IDictKey.GenerateKey()
+export class ExampleClass implements obj_key.IObjKey
+    const unique_object_id = obj_key.GenerateKey()
 endclass
 
+# if you don't want a dictionary with strict type checking, use DictObjKey as:
+#       export class ExampleClassDict extends dict_ok.DictObjKey
+#       endclass
+# otherwise do the following for compile type checking and best performance.
 
-###############################################################################
-#
-# Copied from dict_ok_template.vim.
-# With KeyType/ValueType modified 
-#
-
-# if you don't care about strict type checking
-export class YYYExampleClassDict extends DictObjectKey.DictObjectKey
-endclass
-
+## Following copied from dict_ok_template.vim.
+## With KeyType/ValueType modified 
 
 type ValueType = string
 type KeyType = ExampleClass
 
 
-export class ExampleClassDict extends DictObjectKey.DictObjectKeyBase
+export class ExampleClassDict extends dict_ok.DictObjKeyBase
 
     def Put(key: KeyType, value: ValueType)
         this._d[key.unique_object_id] = [ key, value ]
@@ -40,7 +34,7 @@ export class ExampleClassDict extends DictObjectKey.DictObjectKeyBase
     enddef
 
     def Keys(): list<KeyType>
-        # can optimize, for loop, inline StringKeyToObj
+        # can optimize: for loop, inline StringKeyToObj
         return this._d->keys()->mapnew((i, k) => this.StringKeyToObj(k))
     enddef
 
