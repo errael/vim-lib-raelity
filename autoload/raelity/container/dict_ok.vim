@@ -29,8 +29,8 @@ endclass
 ##
 ## Note: "KeyType" must implement "obj_key.IObjKey".
 
-type ValueType = any
 type KeyType = obj_key.IObjKey
+type ValueType = any
 
 export class DictObjKey extends DictObjKeyBase
 
