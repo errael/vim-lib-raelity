@@ -28,20 +28,21 @@ enddef
 # which is a constructor,"new*", (if caller is not a new, error)
 # and return the caller's unique id.
 def ExtractCaller(stack: string): string
-    # The caller's frame is the second to the last
-    var s1 = stack->split('\.\.')[-2]
+    # The caller's frame is the second from the end
+    var s = stack->split('\.\.')[-2]
 
-    # Extract '<SNR>45_C0.Fun' from 'function <SNR>45_C0.Fun[1]'
-    # and split it into "['<SNR>45_C0', 'Fun']".
-    var l1 = matchstr(s1, '<[^\[]*')->split('\.')
-
-    if l1->len() != 2
-        echoerr printf("'%s' not a class", l1)
-    elseif l1[1] !~ 'new.*'
-        echoerr printf("'%s' not invoked from new", l1)
+    # From 'function <SNR>45_C0.Fun[1]', l[1] == "<SNR>45_C0", l[2] == "Fun"
+    #var pat = '\v(\<[^\.]+)\.?([^\[]*)?'
+    var l = matchlist(s, '\v(\<[^\.]+)\.?([^\[]*)?')
+    if l->empty()
+        echoerr "No stack match"
+    elseif l[2]->empty()
+        echoerr printf("'%s' '%s' not a class", s, l[ : 2])
+    elseif l[2] !~ 'new.*'
+        echoerr printf("'%s' '%s' not invoked from new", s, l[ : 2])
     endif
 
-    return l1[0]
+    return l[1]
 enddef
 
 var obj_id_count_script = 1
@@ -57,8 +58,8 @@ enddef
 finish
 
 def Info(arg1: any, arg2: any)
-    echo "NEW STACK:" arg1      ### s1
-    echo "NEW KEY:" arg2        ### l1
+    echo "NEW STACK:" arg1      ### s
+    echo "NEW KEY:" arg2        ### l
 enddef
 
 # Using the helper abstract class: ObjKey
@@ -88,6 +89,9 @@ class C3 extends C2
     def new()
         this.unique_object_id = GenerateKey()
     enddef
+    static def CreateError()
+        GenerateKey()
+    enddef
 endclass
 
 def F0(): C0
@@ -115,3 +119,16 @@ echo C1.new()
 echo C2.new()
 echo C3.new()
 
+def FF()
+    try
+        C3.CreateError()
+    catch
+        echo v:exception
+    endtry
+    try
+        GenerateKey()
+    catch
+        echo v:exception
+    endtry
+enddef
+FF()

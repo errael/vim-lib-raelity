@@ -1,15 +1,18 @@
 vim9script
 
+import '../raelity_config.vim' as i_config
+
 # Exported functions
 #       CreateDOK - generate a file that defines a dictionary
 #       ResetDefaults - 
 
 # Create a file that is a subclass of DictObjKeyBase, then it can be imported.
-# This can be used dynamically at program startup (before any imports),
+# This can be used dynamically (beware import but not yet created),
 # or wrapped in a script to create dictionaries that are checked in.
 #
 # Arguments are
-# - target_file_name: string
+# - target_file_name: string - relative and no initial '.' ==> generated dir.
+#                              See raelity_config.GenFilePath().
 # - DictClassName: string
 # - KeyType: string
 # - ValueType: string
@@ -17,9 +20,12 @@ vim9script
 # - base_import = "import autoload 'raelity/container/dict_ok.vim'"
 # - base_name = "dict_ok.DictObjKeyBase"
 #
-#       CreateDOK('/tmp/foo0.vim', 'SomeClassDict',
+#       var fname = CreateDOK('mystuff/foo.vim', 'SomeClassDict',
 #           'bar.SomeClass', 'list<string>',
 #           ['import "./bar.vim"'])
+# returns
+#       "/designated/loc/generated_vim_files_directory/mystuff/foo.vim"
+#
 # generates
 #       vim9script
 #       
@@ -44,7 +50,7 @@ export var default_base_import = reset_default_base_import
 export var default_base_name   = reset_default_base_name
 
 export def CreateDOK(
-        target_fn: string,
+        arg_target_fn: string,
         dict_class_name: string,
         key_type: string,
         value_type: string,
@@ -55,7 +61,16 @@ export def CreateDOK(
     var lines = Interpolate(dict_class_name, key_type, value_type, header,
                 base_import, base_name)
 
-    writefile(lines, target_fn)
+    var pathinfo = i_config.GenFilePathInfo(arg_target_fn)
+    var target_fn = pathinfo[0]
+
+    var same = CompareFile(target_fn, lines)
+    if ! same
+        writefile(lines, target_fn)
+    endif
+    var d: dict<bool> = g:['raelity'][
+        pathinfo[1] ? "generated_dir" : "generated_other" ]
+    d[target_fn] = true
 
 enddef
 
@@ -106,7 +121,59 @@ def Interpolate(
 
 enddef
 
+def ReadFile(fn: string): list<string>
+    var l: list<string>
+    try
+        l = readfile(fn, '')
+    catch /E484:\|E485/
+        DebugMsg(() => printf("ReadFile Exception: %s", v:exception))
+        return null_list
+    endtry
+    return l
+enddef
+
+def IsDebug(): bool
+    return g:['raelity'].is_debug
+enddef
+
+def DebugMsg(Msg: func(): string)
+    if g:['raelity'].is_debug
+        echomsg Msg()
+    endif
+enddef
+
+# Return true if new contents same as contents of given file
+def CompareFile(fn: string, new_contents: list<string>): bool
+    var data: list<string> = ReadFile(fn)
+    var is_same = false
+    #var is_same = data != null && data == new_contents
+    if data == null
+        DebugMsg(() => printf('CompareFile: new file %s', fn))
+    elseif data != new_contents
+        DebugMsg(() => printf('CompareFile: %s is different', fn))
+    else
+        DebugMsg(() => printf('CompareFile: %s is the same', fn))
+        is_same = true
+    endif
+    #if ! is_same
+    #    echo 'file:' data
+    #    echo ' new:' new_contents
+    #endif
+    return is_same
+enddef
+
+############################################################################
+
 finish
+
+
+i_config.DebugReset()
+g:['raelity'].is_debug = true
+
+CreateDOK('foo.vim', 'SomeClassDict', 'bar.SomeClass', 'list<string>',
+    ["import './bar.vim'"])
+CreateDOK('subdir/foo.vim', 'SomeClassDict', 'bar.SomeClass', 'list<string>',
+    ["import './bar.vim'"])
 
 CreateDOK('/tmp/foo0.vim', 'SomeClassDict', 'bar.SomeClass', 'list<string>',
     ['import "./bar.vim"'])
@@ -119,3 +186,7 @@ default_base_name = "xxx.DictBase"
 CreateDOK('/tmp/foo2.vim', 'SomeClassDict', 'SomeClass', 'list<string>')
 ResetDefaults()
 CreateDOK('/tmp/foo3.vim', 'SomeClassDict', 'SomeClass', 'list<string>')
+CreateDOK('../play/foo5.vim', 'SomeClassDict', 'SomeClass', 'list<string>')
+
+DebugMsg(() => string(g:['raelity'].generated_dir->keys()))
+DebugMsg(() => string(g:['raelity'].generated_other->keys()))

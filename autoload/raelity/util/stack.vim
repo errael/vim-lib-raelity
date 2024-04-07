@@ -44,7 +44,7 @@ def FixStackFrame(frame: string): string
                 var p = path->split('[/\\]')[- nPath : ]->join('/')
                 return substitute(frame, '\v\<SNR\>\d+_', p .. '::', '')
             endif
-            Scripts(scripts_cache) # executes first iteration, 2nd breaks
+            Scripts(scripts_cache) # executes only if <SNR> not found
         endfor
     elseif frame->stridx('#') >= 0
         var path = frame->split('#')

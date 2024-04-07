@@ -2,9 +2,18 @@ vim9script
 
 set runtimepath+=/src/lib/vim
 
+import autoload 'raelity/raelity_config.vim' as i_config
+echo 'raelity init:' exists("g:['raelity']")
+i_config.DebugReset()
+echo 'raelity init:' exists("g:['raelity']")
+echo g:['raelity']
+
 import autoload 'raelity/container/create_dok.vim'
-create_dok.CreateDOK('dict_my_class_generated.vim', 'DictMyClass',
+var target = 'dict_my_class_generated.vim'
+create_dok.CreateDOK(target, 'DictMyClass',
     'my_class.MyClass', 'number', ["import './my_class.vim'"])
+
+echo "creating:" fnamemodify(target, ":p")
 
 import './my_class.vim'
 import './dict_my_class_generated.vim'

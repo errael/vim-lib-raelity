@@ -1,0 +1,10 @@
+The raelity library has an associated dictionary which is used for both
+configuration and state. The dictionary is g:['raelity'].
+
+g:['raelity']   ### this can be cached; it's never repaced, only cleared.
+g:['raelity'].is_debug
+g:['raelity'].generated_dir = {}    ### Under "generated_vim_files_directory".
+                                    ### By default, deleted at exit.
+g:['raelity'].generated_other = {}  ### Scattered around.
+
+
