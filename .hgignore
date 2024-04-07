@@ -9,3 +9,5 @@ syntax: glob
 *.rej
 
 syntax: rootglob
+
+autoload/raelity/generated_vim_files_directory
