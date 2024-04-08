@@ -2,16 +2,6 @@ vim9script
 
 var testing = false
 
-# Strings and lists of strings
-#       Pad, IndentLtoS, IndentLtoL
-#       Replace, ReplaceBuf
-# Dictionary
-#       DictUniqueCopy, DictUnique
-#       PutIfAbsent (DEPRECATED)
-#       Set (DEPRECATED)
-# Lists, nested lists
-#       ListRandomize
-#       FindInList, FetchFromList
 # Keystrokes
 #       Keys2str
 # Text properties
@@ -19,8 +9,6 @@ var testing = false
 # General
 #       Scripts
 #       EQ, IS
-#       Python ripoff: With
-#           interface WithEE, With(EE,func), ModifiableEE(bnr)
 #       BounceMethodCall,   (WORKAROUND)
 #       IsSameType (TEMP WORKAROUND, instanceof on the way)
 # ##### HexString
@@ -56,14 +44,34 @@ export def Bell(force = true)
 enddef
 
 # Create/update scripts dictionary.
-# Example: var fname = Scripts()[SID/SNR]
-export def Scripts(scripts: dict<string> = {}): dict<string>
-    for info in getscriptinfo()
-        if ! scripts->has_key(info.sid)
-            scripts[info.sid] = info.name
-        endif
-    endfor
-    return scripts
+var scripts_cache: dict<string> = {}
+
+# return '' if not found
+export def ScriptFileNameLookup(sid: string): string
+    var path = scripts_cache->get(sid, '')
+    if !! path
+        return path
+    endif
+    ScriptFiles()
+    return scripts_cache->get(sid, '')
+enddef
+
+# TODO: seperate method that returns readonly copy/version.
+
+# Update and return current dictionary
+export def ScriptFiles(): dict<string>
+    if scripts_cache->empty()
+        for info in getscriptinfo()
+            scripts_cache[info.sid] = info.name
+        endfor
+    else
+        for info in getscriptinfo()
+            if ! scripts_cache->has_key(info.sid)
+                scripts_cache[info.sid] = info.name
+            endif
+        endfor
+    endif
+    return scripts_cache
 enddef
 #def DumpScripts(scripts: dict<string>)
 #    for i in scripts->keys()->sort('N')
@@ -79,240 +87,11 @@ export def IS(lhs: any, rhs: any): bool
     return type(lhs) == type(rhs) && lhs is rhs
 enddef
 
-### Simulate Python's "With"
-#
-#       WithEE - Interface for context management.
-#                Implement this for different contexts.
-#       With(ContextClass.new(), (contextClass) => { ... })
-#
-#       Usage example - modify a buffer where &modifiable might be false
-#           ModifyBufEE implements WithEE
-#           With(ModifyBufEE.new(bnr), (_) => {
-#               # modify the buffer
-#           })
-#           # &modifiable is same state as before "With(ModifyBufEE.new(bnr)"
+################################### moved to with.vim
 
-# Note that Enter can be empty, and all the "Enter" work done in constructor.
-export interface WithEE
-    def Enter(): void
-    def Exit(): void
-endinterface
+################### moved to dicts.vim
 
-# TODO: test how F can declare/cast ee to the right thing
-#
-export def With(ee: WithEE, F: func(WithEE): void)
-    ee.Enter()
-    defer ee.Exit()
-    F(ee)
-enddef
-
-# Save/restore '&modifiable' if needed
-export class ModifyBufEE implements WithEE
-    var _bnr: number
-    var _is_modifiable: bool
-
-    def new(this._bnr)
-        #echo 'ModifyBufEE: new(arg):' this._bnr
-    enddef
-
-    def Enter()
-        this._is_modifiable = getbufvar(this._bnr, '&modifiable')
-        #echo 'ModifyBufEE: Enter:' this._bnr
-        if ! this._is_modifiable
-            #echo 'ModifyBufEE: TURNING MODIFIABLE ON'
-            setbufvar(this._bnr, '&modifiable', true)
-        endif
-    enddef
-
-    def Exit(): void
-        #echo 'ModifyBufEE: Exit'
-        if ! this._is_modifiable
-            #echo 'ModifyBufEE: RESTORING MODIFIABLE OFF'
-            setbufvar(this._bnr, '&modifiable', false)
-        endif
-        #echo 'ModifyBufEE: Exit: restored window:'
-    enddef
-endclass
-
-# Keep window, topline, cursor as possible
-export class KeepWindowEE implements WithEE
-    var _w: dict<any>
-    var _pos: list<number>
-
-    def new()
-    enddef
-
-    def Enter(): void
-        this._w = win_getid()->getwininfo()[0]
-        this._pos = getpos('.')
-    enddef
-
-    def Exit(): void
-        this._w.winid->win_gotoid()
-        if setpos('.', [0, this._w.topline, 0, 0]) == 0
-            execute("normal z\r")
-            setpos('.', this._pos)
-        endif
-        #execute('normal z.')
-    enddef
-endclass
-
-# Keep buffer, cursor as possible
-export class KeepBufferEE implements WithEE
-    var _bnr: number
-    var _pos: list<number>
-
-    def new()
-    enddef
-
-    def Enter(): void
-        this._bnr = bufnr('%')
-        this._pos = getpos('.')
-    enddef
-
-    def Exit(): void
-        execute 'buffer' this._bnr
-        setpos('.', this._pos)
-    enddef
-endclass
-
-# The following saves/restores focused window
-# to get the specified buffer current,
-# it also does modifiable juggling.
-# Not needed since can use [gs]etbufvar.
-#class ModifiableEEXXX extends WithEE
-#    this._bnr: number
-#    this._prevId = -1
-#    this._restore: bool
-#    def new(this._bnr)
-#        #echo 'ModifiableEE: new(arg):' this._bnr
-#    enddef
-#
-#    def Enter(): number
-#        #echo 'ModifiableEE: Enter:' this._bnr
-#        # first find a window that holds this buffer, prefer current window
-#        var curId = win_getid()
-#        var wins = win_findbuf(this._bnr)
-#        if wins->len() < 1
-#            throw "ModifiableEE: buffer not in a window"
-#        endif
-#        var idx = wins->index(curId)
-#        if idx < 0
-#            # need to switch windows
-#            #echo 'ModifiableEE: SWITCHING WINDOWS'
-#            this._prevId = curId
-#            if ! win_gotoid(wins[0])
-#                throw "ModifiableEE: win_gotoid failed"
-#            endif
-#        endif
-#        if ! &modifiable
-#            #echo 'ModifiableEE: TURNING MODIFIABLE ON'
-#            &modifiable = true
-#            this._restore = true
-#        endif
-#        return this._bnr
-#    enddef
-#
-#    def Exit(resource: number): void
-#        #echo 'ModifiableEE: Exit'
-#        if this._restore
-#            #echo 'ModifiableEE: RESTORING MODIFIABLE OFF'
-#            &modifiable = false
-#        endif
-#        if this._prevId < 0
-#            #echo 'ModifiableEE: Exit: same window'
-#            return
-#        endif
-#        if ! win_gotoid(this._prevId)
-#            throw "ModifiableEE:Exit: win_gotoid failed"
-#        endif
-#        #echo 'ModifiableEE: Exit: restored window:' this._prevId
-#    enddef
-#endclass
-
-###
-### Dictionary
-###
-
-# Remove the common key/val from each dict.
-# Note: the dicts are modified
-export def DictUnique(d1: dict<any>, d2: dict<any>)
-    # TODO: use items() from the smallest dict
-    for [k2, v2] in d2->items()
-        if d1->has_key(k2) && d1[k2] == d2[k2]
-            d1->remove(k2)
-            d2-> remove(k2)
-        endif
-    endfor
-enddef
-
-# return list of dicts with unique elements,
-# returned dicts start as shallow copies
-export def DictUniqueCopy(d1: dict<any>, d2: dict<any>): list<dict<any>>
-    var d1_copy = d1->copy()
-    var d2_copy = d2->copy()
-    DictUnique(d1_copy, d2_copy)
-    return [ d1_copy, d2_copy ]
-enddef
-
-###
-### working with lists
-###
-
-def ListRandomize(l: list<any>): list<any>
-    srand()
-    var v_list: list<func> = l->copy()
-    var random_order_list: list<any>
-    while v_list->len() > 0
-        random_order_list->add(v_list->remove(rand() % v_list->len()))
-    endwhile
-    return random_order_list
-enddef
-
-###
-### working with nested lists
-###     A path is used to traverse the nested list, see FetchFromList.
-###
-
-# FindInList: find target in list using '==' (not 'is'), return false if not found
-# Each target found is identified by a list of indexes into the search list,
-# and that is added to path (if path is provided).
-export def FindInList(target: any, l: list<any>, path: list<list<number>> = null_list): bool
-    var path_so_far: list<number> = []
-    var found = false
-    def FindInternal(lin: list<any>)
-        var i = 0
-        var this_one: any
-        while i < len(lin)
-            this_one = lin[i]
-            if EQ(this_one, target)
-                if path != null
-                    path->add(path_so_far + [i])
-                endif
-                found = true
-            elseif type(this_one) == v:t_list
-                path_so_far->add(i)
-                FindInternal(this_one)
-                path_so_far->remove(-1)
-            endif
-            i += 1
-        endwhile
-    enddef
-    if EQ(l, target)
-        path->add([])
-        return true
-    endif
-    FindInternal(l)
-    return found
-enddef
-
-export def FetchFromList(path: list<number>, l: list<any>): any
-    var result: any = l
-    for idx in path
-        result = result[idx]
-    endfor
-    return result
-enddef
+################## moved to lists.vim
 
 ###
 ### Text properties
@@ -395,107 +174,7 @@ export def Keys2Str(k: string, do_escape = true): string
     return result
 enddef
 
-###
-### Strings and lists of strings
-###
-
-
-# Overwrite characters in string, if doesn't fit print error, do nothing.
-# Return new string, input string not modified.
-# NOTE: col starts at 0
-export def Replace(s: string, col0: number, newtext: string): string
-    if col0 + len(newtext) > len(s)
-            echoerr 'Replace: past end' s col0 newtext
-            return s->copy()
-    endif
-    return col0 != 0
-        ? s[ : col0 - 1] .. newtext .. s[col0 + len(newtext) : ]
-        : newtext .. s[len(newtext) : ]
-enddef
-#export def Replace(s: string,
-#        pos1: number, pos2: number, newtext: string): string
-#    return pos1 != 0
-#        ? s[ : pos1 - 1] .. newtext .. s[pos2 + 1 : ]
-#        : newtext .. s[pos2 + 1 : ]
-#enddef
-
-# NOTE: setbufline looses text properties.
-
-# Overwrite characters in a buffer, if doesn't fit print error and do nothing.
-# NOTE: col starts at 1
-export def ReplaceBuf(bnr: number, lino: number,
-        col: number, newtext: string)
-    if bnr != bufnr()
-        echoerr printf('ReplaceBuf(%d): different buffer: curbuf %d', bnr, bufnr())
-        return
-    endif
-    if col - 1 + len(newtext) > len(getbufoneline(bnr, lino))
-            echoerr printf(
-                "ReplaceBuf: past end: bnr %d, lino %d '%s', col %d '%s'",
-                bnr, lino, getbufoneline(bnr, lino), col, newtext)
-            return
-    endif
-    setpos('.', [bnr, lino, col, 0])
-    execute('normal R' .. newtext)
-enddef
-
-
-# Indent each element of list<string>, return a single string
-export def IndentLtoS(l: list<string>, nIndent: number = 4): string
-    if !l
-        return ''
-    endif
-    var indent = repeat(' ', nIndent)
-    l[0] = indent .. l[0]
-    return l->join("\n" .. indent)
-enddef
-
-# indent each element of l in place
-def IndentLtoL(l: list<string>, nIndent: number = 4): list<string>
-    if !l
-        return l
-    endif
-    var indent = repeat(' ', nIndent)
-    return l->map((_, v) => indent .. v)
-enddef
-
-#export def MaxW(l: list<string>): number
-#    return max(l->mapnew((_, v) => len(v)))
-#enddef
-
-# The list is transformed, do a copy first if you want the original
-# a - alignment (first char), 'l' - left (default), 'r' - right, 'c' - center
-# w - width, default 0 means width of longest string
-# ret_off - only centering, if not null, the calculated offsets returned
-# can be used with chaining
-export def Pad(l: list<string>, a: string = 'l',
-        _w: number = 0,
-        ret_off: list<number> = null_list): list<string>
-    # TODO: only need one map statement, could conditionalize calculation
-    var w = !!_w ? _w : max(l->mapnew((_, v) => len(v)))
-    if a[0] != 'c'
-        var justify = a[0] == 'r' ? '' : '-'
-        return l->map((_, v) => printf("%" .. justify .. w .. "s", v))
-    else
-        return l->map((_, v) => {
-            if len(v) > w
-                throw "Pad: string '" .. v .. "' larger that width '" .. w .. "' "
-            endif
-            var _w1 = (w - len(v)) / 2
-            var _w2 = w - len(v) - _w1
-            if ret_off != null | ret_off->add(_w1) | endif
-            #like: printf("%-15s%5s", str, '')
-            return printf("%" .. (_w1 + len(v)) .. "s%" .. _w2 .. "s", v, '')
-            })
-    endif
-enddef
-
-#for l1 in Pad(['x', 'dd', 'sss', 'eeee', 'fffff', 'gggggg'], 'c', 12)
-#    echo l1
-#endfor
-#for l1 in Pad(['x', 'dd', 'sss', 'eeee', 'fffff', 'gggggg', 'ccccccc'], 'c', 12)
-#    echo l1
-#endfor
+############## moved to strings.vim
 
 ###
 ### Expected to be deprecated, 
@@ -509,60 +188,24 @@ enddef
 ### BounceMethodCall
 #
 # The idea is to do invoke an object method with args where the
-# args and method are passed in as a single string. Using execute, the
-# local context is not available, put the object in a script variable "bounce_obj".
+# args and method are passed in as a single string. For example:
+# BounceMethodCall(obj, 'M' .. '1' .. '("stuff")') does obj.M1("stuff")
 # (see https://github.com/vim/vim/issues/12054)
 #
-# If a constructed string is not required, better to
+# If a constructed string is not required, 'M, better to
 # use a lambda that invokes the object and method, "() => obj.method",
-# There could be problem if arguments use BounceMethodCall (directly/indirectly)
-# since bounce_obj is not on the stack. Maybe could save/restore bounce_obj,
-# not worth verifying that works at this time.
 #
-# Hoping to deprecate at some point, not sure what needs to be done
+# And now you can do (where obj.F takes varargs)
+#       def F0(X: func(...list<string>): void, ...args: list<string>)
+#           call(X, args)
+#       enddef
+#       F0(obj.F, 'x', 'y')
 #       
-var count = 0
 var bounce_obj: any = null_object
 export def BounceMethodCall(obj: any, method_and_args: string)
-    if bounce_obj != null_object
-        throw "BounceMethodCall: bounce_obj not null " .. typename(bounce_obj)
-    endif
-    var i = count + 1
-    count = i
     bounce_obj = obj
     execute "bounce_obj." .. method_and_args
-    bounce_obj = null_object
 enddef
-# Example:
-# class C
-#     def M1(s: string)
-#         echo s
-#     enddef
-# endclass
-# 
-# def F()
-#     var inDef = C.new()
-#     # run inDef.M1('xxx') where method name is created dynamically
-#     BounceMethodCall(inDef, "M" .. 1 .. "('compiled bounce')")
-# enddef
-# F()
-
-
-###
-### deprecated, 
-###
-
-#DEPRECATED: use d->extend({[k]: v}, "keep")
-#def PutIfAbsent(d: dict<any>, k: string, v: any)
-#    if ! d->has_key(k)
-#        d[k] = v
-#    endif
-#enddef
-
-#DEPRECATED: 8.2.4589 can now do g:[key] = val
-#def Set(d: dict<any>, k: string, v: any)
-#    d[k] = v
-#enddef
 
 #finish
 

@@ -2,9 +2,8 @@ vim9script
 
 import autoload './vim_assist.vim'
 
-const Scripts = vim_assist.Scripts
+const ScriptFileNameLookup = vim_assist.ScriptFileNameLookup
 
-var scripts_cache = Scripts()
 
 # TODO: Use FixStack
 export def StackTrace(): list<string>
@@ -35,17 +34,14 @@ enddef
 
 def FixStackFrame(frame: string): string
     # nPath is the number of path components to include
-    const nPath = 2
+    const nPath = 3
     var m = matchlist(frame, '\v\<SNR\>(\d+)_')
     if !!m
-        for _ in [1, 2]
-            var path = scripts_cache->get(m[1], '')
-            if !!path
-                var p = path->split('[/\\]')[- nPath : ]->join('/')
-                return substitute(frame, '\v\<SNR\>\d+_', p .. '::', '')
-            endif
-            Scripts(scripts_cache) # executes only if <SNR> not found
-        endfor
+        var path = ScriptFileNameLookup(m[1])
+        if !!path
+            var p = path->split('[/\\]')[- nPath : ]->join('/')
+            return substitute(frame, '\v\<SNR\>\d+_', p .. '::', '')
+        endif
     elseif frame->stridx('#') >= 0
         var path = frame->split('#')
         var function = path->remove(-1)
@@ -54,15 +50,13 @@ def FixStackFrame(frame: string): string
     return frame
 enddef
 
-#finish
-
 ######################################################################
+
+#finish
 
 export var stackString: string
 
 def F0()
-    #Scripts(scripts_cache) # executes first iteration, 2nd breaks
-    #echo scripts_cache
     var str = expand('<stack>')
     stackString = str
 enddef
