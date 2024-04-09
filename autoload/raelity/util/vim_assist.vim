@@ -1,33 +1,62 @@
 vim9script
 
-var testing = false
-
-# Keystrokes
-#       Keys2str
+# Function/Method invocation corner cases workarounds
+#       WrapInvocation      # (experimental)
+#       BounceMethodCall
+# General
+#       Bell
+#       ScriptFileNameLookup, ScriptFiles
+#       EQ, IS
+#       IsExactType
 # Text properties
 #       PropRemoveIds
-# General
-#       Scripts
-#       EQ, IS
-#       BounceMethodCall,   (WORKAROUND)
-#       IsSameType (TEMP WORKAROUND, instanceof on the way)
+# Keystrokes
+#       Keys2str
 # ##### HexString
 
 # experimental, would need another version that returns a value
-def WrapCall(fcall: string): func
+# Return a lambda that wraps the compiled argument.
+# CONSIDER context, in the following "script_variable" is not in this file.
+#       var X = WrapInvocation('script_variable.M1(whatever_arguments)')
+#       X()
+# COPY this elsewhere if needed.
+# NOTE: use "var X: func = WrapInvocation(...)" because typing gets weird
+#       [vim9class] execute() loses (or doesn't preserve) some func type info
+#       https://github.com/vim/vim/issues/14445
+export def WrapInvocation(fcall: string, signature: string = '()'): func
     var x =<< trim eval [CODE]
-        g:SomeRandomFunction = () => {{
+        g:SomeRandomFunction = {signature} => {{
             {fcall}
             }}
     [CODE]
 
     execute(x)
-    var t = g:SomeRandomFunction    
+    var X = g:SomeRandomFunction    
     unlet g:SomeRandomFunction
-    return t
+    return X
 enddef
-#var X = WrapCall('inScript.M1("Wrap Lambda")')
-#X()
+
+### BounceMethodCall
+#
+# The idea is to do invoke an object method with args where the
+# args and method are passed in as a single string. For example:
+# BounceMethodCall(obj, 'M' .. '1' .. '("stuff")') does obj.M1("stuff")
+# (see https://github.com/vim/vim/issues/12054)
+#
+# If a constructed string is not required, 'M, better to
+# use a lambda that invokes the object and method, "() => obj.method",
+#
+# And now you can do (where obj.F takes varargs)
+#       def F0(X: func(...list<string>): void, ...args: list<string>)
+#           call(X, args)
+#       enddef
+#       F0(obj.F, 'x', 'y')
+#       
+var bounce_obj: any = null_object
+export def BounceMethodCall(obj: any, method_and_args: string)
+    bounce_obj = obj
+    execute "bounce_obj." .. method_and_args
+enddef
 
 ###
 ### General
@@ -87,11 +116,12 @@ export def IS(lhs: any, rhs: any): bool
     return type(lhs) == type(rhs) && lhs is rhs
 enddef
 
-################################### moved to with.vim
-
-################### moved to dicts.vim
-
-################## moved to lists.vim
+# Not quite the same as "instanceof", but instanceof is good enough (better?).
+# typename(C.new(), "C") == true
+export def IsExactType(o: any, type: string): bool
+    return type(o) == v:t_object && type == typename(o)[7 : -2]
+    #return type(o) == v:t_object && type == string(o)->split()[2]
+enddef
 
 ###
 ### Text properties
@@ -174,40 +204,7 @@ export def Keys2Str(k: string, do_escape = true): string
     return result
 enddef
 
-############## moved to strings.vim
-
-###
-### Expected to be deprecated, 
-###
-
-export def IsSameType(o: any, type: string): bool
-    return type(o) == v:t_object && type == typename(o)[7 : -2]
-    #return type(o) == v:t_object && type == string(o)->split()[2]
-enddef
-
-### BounceMethodCall
-#
-# The idea is to do invoke an object method with args where the
-# args and method are passed in as a single string. For example:
-# BounceMethodCall(obj, 'M' .. '1' .. '("stuff")') does obj.M1("stuff")
-# (see https://github.com/vim/vim/issues/12054)
-#
-# If a constructed string is not required, 'M, better to
-# use a lambda that invokes the object and method, "() => obj.method",
-#
-# And now you can do (where obj.F takes varargs)
-#       def F0(X: func(...list<string>): void, ...args: list<string>)
-#           call(X, args)
-#       enddef
-#       F0(obj.F, 'x', 'y')
-#       
-var bounce_obj: any = null_object
-export def BounceMethodCall(obj: any, method_and_args: string)
-    bounce_obj = obj
-    execute "bounce_obj." .. method_and_args
-enddef
-
-#finish
+finish
 
 # just use echo 
 #export def HexString(in: string, space: bool = false, quot: bool = false): string
@@ -221,13 +218,11 @@ enddef
 #    return quot ? "'" .. out .. "'" : out
 #enddef
 
-if  !testing
-    finish
-endif
+############################################################################
+############################################################################
+############################################################################
 
-############################################################################
-############################################################################
-############################################################################
+# Following now in strings.vim
 
 # With these 3 lines in a buffer (starting with 0) source this from that buffer
 # -->12345678
