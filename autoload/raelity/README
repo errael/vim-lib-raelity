@@ -1,3 +1,45 @@
+To use full path, avoid the autoload path search, do
+
+    import autoload 'raelity/config.vim' as i_config
+    import autoload i_config.Rlib('util/strings.vim') as i_strings
+
+import autoload/util/...
+    log.vim - logging
+        LogInit(fname) - enables logging, if first call output time stamp
+        Log(msgOrFunc, category, ...)
+        SetExcludeCategories(excludes: list<string>)
+        LogStack(tag: string = '')
+    with.vim - like python's 'with' to automatically when exit context
+        WithEE - Interface for context management.
+        With(ContextClass.new(), (contextClass) => { ... })
+        ModifyBufEE - Save/restore '&modifiable' if needed
+        KeepWindowEE - Keep window, topline, cursor as possible
+        KeepBufferEE - Keep buffer, cursor as possible
+    strings.vim - Strings and lists of strings
+        Pad, IndentLtoS, IndentLtoL
+        Replace, ReplaceBuf
+    lists.vim - Lists, nested lists
+        ListRandomize
+        FindInList, FetchFromList
+    dicts.vim - Dictionary
+        DictUniqueCopy, DictUnique
+    stack.vim - stack formatting
+        StackTrace(): list<string> - stack trace without this method
+        FixStack(argStack: string): list<string> 
+    vim_extra.vim - things that could just as well be internal to vim
+        Function/Method invocation corner cases workarounds
+            WrapInvocation
+            BounceMethodCall
+        General
+            Bell
+            ScriptFileNameLookup, ScriptFiles
+            EQ, IS
+            IsExactType
+        Text properties
+            PropRemoveIds
+        Keystrokes
+            Keys2str
+
 The raelity library has an associated dictionary which is used for both
 configuration and state. The dictionary is g:['raelity'].
 

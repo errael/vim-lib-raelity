@@ -1,6 +1,6 @@
 vim9script
 
-echo 'RUNNING raelity_startup.vim'
+#echo 'RUNNING raelity_startup.vim'
 
 var initialized: bool
 
