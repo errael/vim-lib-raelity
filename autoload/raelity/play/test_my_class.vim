@@ -1,8 +1,8 @@
 vim9script
 
-set runtimepath+=/src/lib/vim
+set runtimepath^=/src/lib/vim
 
-import autoload 'raelity/raelity_config.vim' as i_config
+import autoload 'raelity/config.vim' as i_config
 echo 'raelity init:' exists("g:['raelity']")
 i_config.DebugReset()
 echo 'raelity init:' exists("g:['raelity']")

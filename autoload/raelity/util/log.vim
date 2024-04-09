@@ -1,7 +1,5 @@
 vim9script
 
-### import autoload './ui.vim'
-import autoload './vim_assist.vim'
 import autoload './strings.vim' as i_strings
 import autoload './stack.vim' as i_stack
 
@@ -115,20 +113,5 @@ export def LogInit(_fname: string)
     endif
 enddef
 
-# TODO: may add some kind of "how to close" info in E
-#       make E dict<dict<any>>
-# TODO: This should not be in log.vim, either import or put popup elsewhere
-const E = {
-    ENOTFILE: ["Current buffer, '%s', doesn't support '%s'", 'Command Issue'],
-    ENOCONFLICT: ["No more conflicts"],
-}
-
-
-### export def SplicePopup(e_idx: string, ...extra: list<any>)
-###     var err = E[e_idx]
-###     var msg = call('printf', [ err[0] ] + extra)
-###     Log(msg)
-###     ui.PopupError([msg], err[ 1 : ])
-### enddef
 
 

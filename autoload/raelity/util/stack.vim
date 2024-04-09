@@ -1,27 +1,32 @@
 vim9script
 
-import autoload './vim_assist.vim'
+import autoload './vim_extra.vim'
 
-const ScriptFileNameLookup = vim_assist.ScriptFileNameLookup
+const ScriptFileNameLookup = vim_extra.ScriptFileNameLookup
 
+#
+# TODO: problems if parsing a lambda
+#
 
 # TODO: Use FixStack
-export def StackTrace(): list<string>
+export def StackTrace(nPath = 3): list<string>
     # slice(1): don't include this function in trace
-    var stack = expand('<stack>')->split('\.\.')->reverse()->slice(1)
+    return FixStack(expand('<stack>'), nPath)->reverse()->slice(1)
+enddef
+
+export def FixStack(argStack: string, nPath = 3): list<string>
+    var stack = argStack->split('\.\.')
     stack->map((_, frame) => {
-        return FixStackFrame(frame)
+        return FixStackFrame(frame, nPath)
     })
     return stack
 enddef
 
-export def FixStack(argStack: string): list<string>
-    #var stack = argStack->split('\.\.')->reverse()->slice(1)
-    var stack = argStack->split('\.\.')
-    stack->map((_, frame) => {
-        return FixStackFrame(frame)
-    })
-    return stack
+# Return the function/class.method name of the caller
+# TODO: problems if lambda
+export def Func(): string
+    var frame = expand('<stack>')->split('\.\.')[-2]
+    return matchlist(frame, '\v\<SNR\>\d+_([[:alnum:]_.]+)')[1]
 enddef
 
 #export def FixStackFrames(frames: list<string>): list<string>
@@ -32,9 +37,8 @@ enddef
 #    return stack
 #enddef
 
-def FixStackFrame(frame: string): string
-    # nPath is the number of path components to include
-    const nPath = 3
+# nPath is the number of path components of file name to include
+def FixStackFrame(frame: string, nPath = 3): string
     var m = matchlist(frame, '\v\<SNR\>(\d+)_')
     if !!m
         var path = ScriptFileNameLookup(m[1])

@@ -1,14 +1,34 @@
 vim9script
 
-echo 'RUNNING raelity_config.vim'
+#echo 'RUNNING raelity_config.vim'
 
 import '../../plugin/raelity_startup.vim' as startup
 
 #############################################################################
 #
-# General configuration
+# General configuration and assist
 
+# The directory where this file is found.
+export const lib_dir: string = fnamemodify(
+    getscriptinfo(
+        {sid: str2nr(matchstr(expand('<SID>'), '\v\d+'))}
+    )[0].name, ':p:h')
 
+# Get a full path to a lib file and avoid path search.
+# If you would normally do
+#       "import autoload raelity/util/strings.vim",
+# then do
+#       "import autoload Rlib(util/strings.vim)"
+export def Rlib(raelity_autoload_fname: string): string
+    return lib_dir .. '/' .. raelity_autoload_fname
+enddef
+
+import Rlib('util/log.vim') as i_log
+import Rlib('util/stack.vim') as i_stack
+const Log = i_log.Log
+
+# empty means no autogen directory
+var gen_files_dir_parent = ''
 
 #############################################################################
 #
@@ -18,12 +38,16 @@ import '../../plugin/raelity_startup.vim' as startup
 #          the "generated_vim_files_directory" are deleted when vim exits.
 #          Can set "g:['raelity'].preserve_generated_files" to true
 #          after importing this file.
-
-# TODO: probably need a way to specify the generated file directory
+# NOTE:    Since this may be changed, the developer either must set it
+#          every time it is used, or read it after setting the parent.
+#          Read it with GenFilesDir(); note exception is thrown if not set
 
 #
-# GenFilePath
-# GenFilePathInfo
+# SetGenFilesDirParent(dirname: string)
+# GenFilesDir(): string
+#
+# GenFilePath(fname: string): string
+# GenFilePathInfo(fname: string): list<any>
 #
 # Return absolute path name of "fname" under the generated files directory
 # when "fname" is a relative path not starting with ".".
@@ -46,18 +70,22 @@ export def GenFilePath(fname: string): string
     return GenFilePathInfo(fname)[0]
 enddef
 
-# This should be done first, before the creation of any generated files,
-# otherwise generated files may appear in multiple locations.
-# Name must be absolute path.
+# This must be done first, before the creation of any generated files.
+# Name must be absolute path, unless it is being cleared.
 #
 # Example: after doing "SetGenFilesDirParent('/a/b/') generated files end up
 #          under "/a/b/generated_vim_files_directory/"
 # TODO: any special checking? Don't allow this after a file is generated (throw?).
-def SetGenFilesDirParent(dirname: string)
-    if ! isabsolutepath(dirname)
-        throw dirname .. ' is not an absolute path'
+
+# parent_directories used as a set
+var parent_directories: dict<bool>
+
+export def SetGenFilesDirParent(dirname: string)
+    if ! (isabsolutepath(dirname) || dirname->empty())
+        throw 'RLIB:' .. dirname .. ' is not an absolute path or empty'
     endif
-    # gen_files_dir_parent = dirname
+    parent_directories[dirname] = true
+    gen_files_dir_parent = dirname
 enddef
 
 # Specialized version of "GenFilePath(fname)" that returns additional info.
@@ -73,17 +101,12 @@ export def GenFilePathInfo(fname: string): list<any>
 enddef
 
 export def GenFilesDir(): string
+    if gen_files_dir_parent->empty()
+        throw 'RLIB: directory not set.'
+    endif
     return gen_files_dir_parent .. '/' .. gen_files_dirname
 enddef
 
-def InternalGenFilesDirParent(): string
-    var sid = matchstr(expand('<SID>'), '\v\d+')
-    var thisname = getscriptinfo({sid: str2nr(sid)})[0].name
-    var dir = fnamemodify(thisname, ':p:h')
-    return dir
-enddef
-
-var gen_files_dir_parent = InternalGenFilesDirParent()
 const gen_files_dirname = 'generated_vim_files_directory'
 
 
@@ -92,12 +115,13 @@ def CleanupGeneratedFiles()
     if g:['raelity'].preserve_generated_files
         return
     endif
-    var dir = GenFilesDir()
-    delete(dir, "rf")
 
-    #var fxxx = '/tmp/TEST_FLAG'
-    #var m = "CLEANUP_GENERATED_FILES: " .. dir
-    #writefile([ m, strftime("%c") ], fxxx)
+    var fnc = i_stack.Func()
+    parent_directories->foreach((parent_dir, _) => {
+        var gen_dir = parent_dir .. '/' .. gen_files_dirname
+        Log(() => printf("%s: %s", fnc, gen_dir))
+        delete(gen_dir, "rf")
+    })
 enddef
 
 autocmd VimLeave * CleanupGeneratedFiles()

@@ -11,7 +11,7 @@ F()
 
 var str = i_stack.stackString
 echo str
-var stack: list<string> = FixStack(str)
+var stack: list<string> = FixStack(str, 2)
 
 def Dump(stk: list<string>)
     stk->foreach((i, v) => {

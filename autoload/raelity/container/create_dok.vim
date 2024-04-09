@@ -1,6 +1,6 @@
 vim9script
 
-import '../raelity_config.vim' as i_config
+import '../config.vim' as i_config
 
 # Exported functions
 #       CreateDOK - generate a file that defines a dictionary
@@ -12,7 +12,7 @@ import '../raelity_config.vim' as i_config
 #
 # Arguments are
 # - target_file_name: string - relative and no initial '.' ==> generated dir.
-#                              See raelity_config.GenFilePath().
+#                              See raelity/config.GenFilePath().
 # - DictClassName: string
 # - KeyType: string
 # - ValueType: string
