@@ -23,9 +23,8 @@ export def Rlib(raelity_autoload_fname: string): string
     return lib_dir .. '/' .. raelity_autoload_fname
 enddef
 
-import Rlib('util/log.vim') as i_log
-import Rlib('util/stack.vim') as i_stack
-const Log = i_log.Log
+import autoload Rlib('util/log.vim') as i_log
+import autoload Rlib('util/stack.vim') as i_stack
 
 # empty means no autogen directory
 var gen_files_dir_parent = ''
@@ -119,7 +118,7 @@ def CleanupGeneratedFiles()
     var fnc = i_stack.Func()
     parent_directories->foreach((parent_dir, _) => {
         var gen_dir = parent_dir .. '/' .. gen_files_dirname
-        Log(() => printf("%s: %s", fnc, gen_dir))
+        i_log.Log(() => printf("%s: %s", fnc, gen_dir))
         delete(gen_dir, "rf")
     })
 enddef

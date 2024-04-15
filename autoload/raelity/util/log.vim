@@ -3,8 +3,6 @@ vim9script
 import autoload './strings.vim' as i_strings
 import autoload './stack.vim' as i_stack
 
-const IndentLtoS = i_strings.IndentLtoS
-
 #
 # Logging
 #
@@ -24,10 +22,20 @@ export def SetExcludeCategories(excludes: list<string>)
 enddef
 
 # TODO: popup?
-def Logging_problem(s: string)
-    Log(s, 'internal_error', true, '')
+def Logging_problem(s: string, isException = false)
+    var fullLogMsg = s
+    var fullMsg = s
+
+    if isException
+        fullLogMsg = printf("%s.\n    Line: %s\n    Caught: %s",
+            s, v:throwpoint, v:exception)
+        fullMsg = printf("%s. Line: %s, Caught: %s",
+            s, v:throwpoint, v:exception)
+    endif
+
+    Log(fullMsg, 'internal_error', true)
     echomsg expand("<stack>")
-    echomsg s
+    echomsg fullMsg
 enddef
 
 #
@@ -67,9 +75,8 @@ export def Log(msgOrFunc: any, category: string = '',
         try
             var F: func = msgOrFunc
             msg ..= F()
-        catch /.*/
-            Logging_problem(printf("LOGGING USAGE BUG: FUNC: %s, caught %s.",
-                typename(msg), v:exception))
+        catch
+            Logging_problem(printf("LOGGING USAGE BUG: FUNC: %s", typename(msg)), true)
             return
         endtry
     else
@@ -80,16 +87,15 @@ export def Log(msgOrFunc: any, category: string = '',
     if stack
         msg ..= "\n  stack:"
         var stack_info = i_stack.StackTrace()->slice(1)
-        msg ..= "\n" .. IndentLtoS(stack_info)
+        msg ..= "\n" .. i_strings.IndentLtoS(stack_info)
     endif
 
     if !!command
         msg ..= "\n" .. "  command '" .. command .. "' output:"
         try
-            msg ..= "\n" .. execute(command)->split("\n")->IndentLtoS()
-        catch /.*/
-            Logging_problem(printf("LOGGING USAGE BUG: command : %s, caught: %s.",
-                command, v:exception))
+            msg ..= "\n" .. execute(command)->split("\n")->i_strings.IndentLtoS()
+        catch
+            Logging_problem(printf("LOGGING USAGE BUG: command : %s", command), true)
             return
         endtry
     endif
