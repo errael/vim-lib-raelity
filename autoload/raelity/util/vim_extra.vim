@@ -5,7 +5,6 @@ vim9script
 #       BounceMethodCall
 # General
 #       Bell
-#       ScriptFileNameLookup, ScriptFiles
 #       EQ, IS
 #       IsExactType
 # Text properties
@@ -71,42 +70,6 @@ export def Bell(force = true)
     echomsg "Oops!"
     echohl None
 enddef
-
-# Create/update scripts dictionary.
-var scripts_cache: dict<string> = {}
-
-# return '' if not found
-export def ScriptFileNameLookup(sid: string): string
-    var path = scripts_cache->get(sid, '')
-    if !! path
-        return path
-    endif
-    ScriptFiles()
-    return scripts_cache->get(sid, '')
-enddef
-
-# TODO: seperate method that returns readonly copy/version.
-
-# Update and return current dictionary
-export def ScriptFiles(): dict<string>
-    if scripts_cache->empty()
-        for info in getscriptinfo()
-            scripts_cache[info.sid] = info.name
-        endfor
-    else
-        for info in getscriptinfo()
-            if ! scripts_cache->has_key(info.sid)
-                scripts_cache[info.sid] = info.name
-            endif
-        endfor
-    endif
-    return scripts_cache
-enddef
-#def DumpScripts(scripts: dict<string>)
-#    for i in scripts->keys()->sort('N')
-#        echo i scripts[i]
-#    endfor
-#enddef
 
 # https://github.com/vim/vim/issues/10022 (won't fix)
 export def EQ(lhs: any, rhs: any): bool
