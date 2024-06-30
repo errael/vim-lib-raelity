@@ -10,4 +10,7 @@ syntax: glob
 
 syntax: rootglob
 
+tags
+
 autoload/raelity/generated_vim_files_directory
+

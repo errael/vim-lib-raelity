@@ -13,6 +13,7 @@ export const lib_dir: string = fnamemodify(
     getscriptinfo(
         {sid: str2nr(matchstr(expand('<SID>'), '\v\d+'))}
     )[0].name, ':p:h')
+#echomsg 'autoload/raelity/config.vim: lib_dir:' lib_dir
 
 # Get a full path to a lib file and avoid path search.
 # If you would normally do
@@ -115,7 +116,7 @@ def CleanupGeneratedFiles()
         return
     endif
 
-    var fnc = i_stack.Func()
+    var fnc = i_stack.CallerFuncName()
     parent_directories->foreach((parent_dir, _) => {
         var gen_dir = parent_dir .. '/' .. gen_files_dirname
         i_log.Log(() => printf("%s: %s", fnc, gen_dir))

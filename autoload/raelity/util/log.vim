@@ -16,7 +16,7 @@ var fname: string
 var logging_enabled: bool = false
 var logging_exclude: list<string>
 
-# Maybe AddExclude/RemoveExclude methods in here.
+# TODO: AddExclude/RemoveExclude methods in here.
 export def SetExcludeCategories(excludes: list<string>)
     logging_exclude = excludes
 enddef
@@ -45,8 +45,8 @@ enddef
 # Output example: "CATEGORY: The log msg"
 # NOTE: category is checked with ignore case, output as upper case
 #
-#   - Log(msg: string [, category = ''[, stack = true[, command = '']]])
-#   - Log(func(): string [, category = ''[, stack = true[, command = '']]])
+#   - Log(msg: string [, category = ''[, stack = false[, command = '']]])
+#   - Log(func(): string [, category = ''[, stack = false[, command = '']]])
 #
 # If optional stack is true, the stacktrace from where Log is called
 # is output to the log.
@@ -102,8 +102,6 @@ export def Log(msgOrFunc: any, category: string = '',
 
     writefile(msg->split("\n"), fname, 'a')
 enddef
-
-###################################### moved to stack.vim
 
 export def LogStack(tag: string = '')
     Log(tag .. ': ' .. expand('<stack>'))

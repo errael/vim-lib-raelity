@@ -1,6 +1,6 @@
 vim9script
 
-# StackTrace, FixStack, Func
+# StackTrace, FixStack, CallerFuncName
 # ScriptFileNameLookup, ScriptFiles
 
 #
@@ -20,9 +20,22 @@ export def FixStack(argStack: string, nPath = 3): list<string>
     return stack
 enddef
 
-# Return the function/class.method name of the caller
-export def Func(): string
+# Return the function/class.method name of the caller.
+# Lambda are ignored; the util#log#Log function is ignored.
+#
+# For example, in the following "ActivateGridBindings" is the caller.
+#
+#       export def ActivateGridBindings()
+#           i_log.Log(() => i_stack.CallerFuncName())
+#
+#       <SNR>63_GridMode.Activate[1]
+#       splice9dev#splicelib#util#keys#ActivateGridBindings[1]
+#       raelity#util#log#Log[19]
+#       <lambda>91[1]
+#       raelity#util#stack#CallerFuncName[1]
+export def CallerFuncName(): string
     var l = expand('<stack>')->split('\.\.')
+    #var magic = "\n***********\nCallerFuncName:\n" .. l->join("\n") .. "\n***********\n"
 
     var idx = -1                # -1 is this function, -2 is caller.
     var frame = '<lambda>'      # to get in the loop
@@ -97,6 +110,10 @@ export def ScriptFiles(): dict<string>
     return scripts_cache
 enddef
 
+finish
+
+
+
 #def DumpScripts(scripts: dict<string>)
 #    for i in scripts->keys()->sort('N')
 #        echo i scripts[i]
@@ -104,8 +121,6 @@ enddef
 #enddef
 
 ######################################################################
-
-#finish
 
 export var stackString: string
 
