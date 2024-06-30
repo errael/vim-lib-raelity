@@ -73,15 +73,25 @@ enddef
 #enddef
 
 # The list is transformed, do a copy first if you want the original
-# a - alignment (first char), 'l' - left (default), 'r' - right, 'c' - center
-# w - width, default 0 means width of longest string
+# a     - alignment (first char), 'l' - left (default), 'r' - right, 'c' - center
+# w     - width, default 0 means width of longest string;
+#         if negative, then max of longest string and -w, so at least -w.
 # ret_off - only centering, if not null, the calculated offsets returned
 # can be used with chaining
+
 export def Pad(l: list<string>, a: string = 'l',
         _w: number = 0,
         ret_off: list<number> = null_list): list<string>
-    # TODO: only need one map statement, could conditionalize calculation
-    var w = !!_w ? _w : max(l->mapnew((_, v) => len(v)))
+    var w: number
+    if _w > 0
+        w = _w
+    else
+        # need to know the longest string
+        w = max(l->mapnew((_, v) => len(v)))
+        # if param is 0, use the longest string;
+        # otherwise param w might override longest string.
+        w = _w == 0 ? w : max([-_w, w])
+    endif
     if a[0] != 'c'
         var justify = a[0] == 'r' ? '' : '-'
         return l->map((_, v) => printf("%" .. justify .. w .. "s", v))

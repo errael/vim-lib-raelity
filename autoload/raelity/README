@@ -13,8 +13,10 @@ import autoload/util/...
         WithEE - Interface for context management.
         With(ContextClass.new(), (contextClass) => { ... })
         ModifyBufEE - Save/restore '&modifiable' if needed
-        KeepWindowEE - Keep window, topline, cursor as possible
-        KeepBufferEE - Keep buffer, cursor as possible
+        KeepWindowOnlyEE - Keep window
+        KeepBufferOnlyEE - Keep buffer
+        KeepWindowPosEE - Keep window, topline, cursor as possible
+        KeepBufferPosEE - Keep buffer, cursor as possible
     strings.vim - Strings and lists of strings
         Pad, IndentLtoS, IndentLtoL
         Replace, ReplaceBuf

@@ -1,5 +1,7 @@
 vim9script
 
+import './ui.vim' as i_ui
+
 #       Python ripoff: With
 #           interface WithEE, With(EE,func), ModifiableEE(bnr)
 
@@ -30,6 +32,8 @@ export def With(ee: WithEE, F: func(WithEE): void)
     F(ee)
 enddef
 
+# Save/restore 
+
 # Save/restore '&modifiable' if needed
 export class ModifyBufEE implements WithEE
     var _bnr: number
@@ -58,8 +62,40 @@ export class ModifyBufEE implements WithEE
     enddef
 endclass
 
+# Keep window
+export class KeepWindowOnlyEE implements WithEE
+    var _winid: number
+
+    def new()
+    enddef
+
+    def Enter(): void
+        this._winid = win_getid()
+    enddef
+
+    def Exit(): void
+        this._winid->win_gotoid()
+    enddef
+endclass
+
+# Keep buffer, cursor as possible
+export class KeepBufferOnlyEE implements WithEE
+    var _bnr: number
+
+    def new()
+    enddef
+
+    def Enter(): void
+        this._bnr = bufnr('%')
+    enddef
+
+    def Exit(): void
+        execute 'buffer' this._bnr
+    enddef
+endclass
+
 # Keep window, topline, cursor as possible
-export class KeepWindowEE implements WithEE
+export class KeepWindowPosEE implements WithEE
     var _w: dict<any>
     var _pos: list<number>
 
@@ -81,8 +117,9 @@ export class KeepWindowEE implements WithEE
     enddef
 endclass
 
-# Keep buffer, cursor as possible
-export class KeepBufferEE implements WithEE
+# Keep buffer, cursor as possible; typically same window on enter/exit.
+# TODO: Why would exit ever have a different buffer?
+export class KeepBufferPosEE implements WithEE
     var _bnr: number
     var _pos: list<number>
 
@@ -95,7 +132,27 @@ export class KeepBufferEE implements WithEE
     enddef
 
     def Exit(): void
+        if this._bnr != bufnr()
+            i_ui.PopupAlert(['DEBUG:', printf('bnr: prev %d, cur %d', this._bnr, bufnr())],
+                'KeepBufferPosEE')
+        endif
         execute 'buffer' this._bnr
+        setpos('.', this._pos)
+    enddef
+endclass
+
+# Keep cursor as possible. Doesn't modify buffer or window!
+export class KeepPosEE implements WithEE
+    var _pos: list<number>
+
+    def new()
+    enddef
+
+    def Enter(): void
+        this._pos = getcurpos()
+    enddef
+
+    def Exit(): void
         setpos('.', this._pos)
     enddef
 endclass

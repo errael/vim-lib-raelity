@@ -6,13 +6,19 @@ endif
 const debug_test = false
 
 #
-# MapModeFilter(modes, pattern, exact = true, field = lhs)
-# MapModeFilterFunc(modes, filter_func)
-# MapModeFilterExpr(modes, filter_expr)
+# Build and return efficient functions to filter maplist().
 #
-# Return mappings used in "modes" that match a pattern.
-# Used with maplist()->filter() to return mappings involving argument "modes".
-#       - "modes" one or more modes of interest.
+# MapModeFilter(modes: string, pattern: string, exact: bool = true,
+#                                               field: string = 'lhs')
+#              : func(any, dict<any>): bool
+# MapModeFilterFunc(modes: string, PreFilter: func(dict<any>): bool)
+#                  : func(any, dict<any>): bool
+# MapModeFilterExpr(modes: string, expr: string)
+#                  : func(any, dict<any>): bool
+#
+# Use these functions to filter mappings used in "modes" that match a pattern.
+# Use as maplist()->filter(MMFunc) to return mappings involving argument "modes".
+#       - "modes" one or more modes of interest: n v s x o ! i l c t
 #       - "pattern" matched against a field in the mapping-dict
 #       - "exact" true means use '==', otherwise '=~',
 #         for checking if mapping's "field" matches. Default is 'true'
