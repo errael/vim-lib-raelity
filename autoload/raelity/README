@@ -5,10 +5,13 @@ To use full path, avoid the autoload path search, do
 
 import autoload/util/...
     log.vim - logging
-        LogInit(fname) - enables logging, if first call output time stamp
         Log(msgOrFunc, category, ...)
-        SetExcludeCategories(excludes: list<string>)
-        LogStack(tag: string = '')
+        LogInit(fname: string           # enables logging, outputs time stamp
+                exclude_categories: list<string>,
+                add_exclude_categories: list<string>,
+                remove_exclude_categories: list<string>)
+        IsEnabled(category = '')
+        GetExcludeCategories()
     with.vim - like python's 'with' to automatically when exit context
         WithEE - Interface for context management.
         With(ContextClass.new(), (contextClass) => { ... })

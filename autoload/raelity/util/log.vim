@@ -16,37 +16,43 @@ var fname: string
 var logging_enabled: bool = false
 var logging_exclude: list<string>
 
-# TODO: AddExclude/RemoveExclude methods in here.
-export def SetExcludeCategories(excludes: list<string>)
-    logging_exclude = excludes
+var log_init = false
+export def LogInit(_fname: string, excludes: list<string> = [],
+        add_excludes: list<string> = [], remove_excludes: list<string> = [])
+    if !log_init
+        # After initializing logging exclude categories: add some, then remove some
+        logging_exclude = excludes->copy()
+        AddExcludeCategories(add_excludes)
+        RemoveExcludeCategories(remove_excludes)
+        fname = _fname
+        logging_enabled = true
+        writefile([ '', '', '=== ' .. strftime('%c') .. ' ===' ], fname, "a")
+        log_init = true
+    endif
 enddef
 
-# TODO: popup?
-def Logging_problem(s: string, isException = false)
-    var fullLogMsg = s
-    var fullMsg = s
+export def GetExcludeCategories(): list<string>
+    return logging_exclude->copy()
+enddef
 
-    if isException
-        fullLogMsg = printf("%s.\n    Line: %s\n    Caught: %s",
-            s, v:throwpoint, v:exception)
-        fullMsg = printf("%s. Line: %s, Caught: %s",
-            s, v:throwpoint, v:exception)
-    endif
-
-    Log(fullMsg, 'internal_error', true)
-    echomsg expand("<stack>")
-    echomsg fullMsg
+export def IsEnabled(category: string = '')
+    return logging_enabled
+        && (category->empty() || logging_exclude->index(category, 0, true) < 0)
 enddef
 
 #
 # Conditionally log to a file based on logging enabled and optional category.
 # The message is split by "\n" and passed to writefile()
-# Output example: "The log msg"
-# Output example: "CATEGORY: The log msg"
-# NOTE: category is checked with ignore case, output as upper case
 #
-#   - Log(msg: string [, category = ''[, stack = false[, command = '']]])
-#   - Log(func(): string [, category = ''[, stack = false[, command = '']]])
+# Example 1: Log("The log msg")               # Output: "The log msg"
+# Example 2: Log("The message", 'category')   # Output: "CATEGORY: The log msg"
+# Example 3: Log(() => "message", 'category') # Output: "message"
+#
+# NOTE: If the first arg is a function, it is not evaluated if logging is
+#       disabled or if the optional category is excluded.
+# NOTE: category is checked with ignore case, output as upper case.
+#
+#   - Log(msgOrFunc: string, category = '', stack = false, command = '')
 #
 # If optional stack is true, the stacktrace from where Log is called
 # is output to the log.
@@ -103,19 +109,37 @@ export def Log(msgOrFunc: any, category: string = '',
     writefile(msg->split("\n"), fname, 'a')
 enddef
 
-export def LogStack(tag: string = '')
-    Log(tag .. ': ' .. expand('<stack>'))
-enddef
+# TODO: popup?
+def Logging_problem(s: string, isException = false)
+    var fullLogMsg = s
+    var fullMsg = s
 
-var log_init = false
-export def LogInit(_fname: string)
-    if !log_init
-        fname = _fname
-        logging_enabled = true
-        writefile([ '', '', '=== ' .. strftime('%c') .. ' ===' ], fname, "a")
-        log_init = true
+    if isException
+        fullLogMsg = printf("%s.\n    Line: %s\n    Caught: %s",
+            s, v:throwpoint, v:exception)
+        fullMsg = printf("%s. Line: %s, Caught: %s",
+            s, v:throwpoint, v:exception)
     endif
+
+    Log(fullMsg, 'internal_error', true)
+    echomsg expand("<stack>")
+    echomsg fullMsg
 enddef
 
+def AddExcludeCategories(excludes: list<string>)
+    for category in excludes
+        var idx = logging_exclude->index(category)
+        if idx < 0
+            logging_exclude->add(category)
+        endif
+    endfor
+enddef
 
-
+def RemoveExcludeCategories(excludes: list<string>)
+    for category in excludes
+        var idx = logging_exclude->index(category)
+        if idx >= 0
+            logging_exclude->remove(idx)
+        endif
+    endfor
+enddef
