@@ -3,11 +3,21 @@ vim9script
 import autoload './strings.vim' as i_strings
 import autoload './stack.vim' as i_stack
 
+# TODO: If logging has been previously fully initialized, see logging_initialized,
+#       then allow logging_enabled to be toggled. Stack enable/disable?
+
 #
 # Logging
 #
-# LogInit(fname) - enables logging, if first call output time stamp
-# Log(string) - append string to Log if logging enabled
+# enables logging, if first call output time stamp
+# LogInit(_fname : string, excludes: list<string> = [],
+#         add_excludes: list<string> = [], remove_excludes: list<string> = [])
+# throwpoint: string - stack of failure during LogInit, valid after exception
+#
+# Log(msgOrFunc : any, category: any = '', stack: bool = false, command: string = '')
+#
+# IsEnabled(category : string = ''): bool
+# GetExcludeCategories() : list<string>
 #
 # NOTE: the log file is never trunctated, persists, grows without limit
 #
@@ -15,19 +25,31 @@ import autoload './stack.vim' as i_stack
 var fname: string
 var logging_enabled: bool = false
 var logging_exclude: list<string>
+var logging_initialized: bool
+export var throwpoint: string
+
+# NOTE: PROBLEM: log_init == true && logging_initialized == false
 
 var log_init = false
 export def LogInit(_fname: string, excludes: list<string> = [],
         add_excludes: list<string> = [], remove_excludes: list<string> = [])
     if !log_init
+        log_init = true
         # After initializing logging exclude categories: add some, then remove some
         logging_exclude = excludes->copy()
         AddExcludeCategories(add_excludes)
         RemoveExcludeCategories(remove_excludes)
-        fname = _fname
-        logging_enabled = true
-        writefile([ '', '', '=== ' .. strftime('%c') .. ' ===' ], fname, "a")
-        log_init = true
+        try
+            fname = _fname
+            writefile([ '', '', '=== NEW_LOG: ' .. strftime('%c') .. ' ===' ], fname, "a")
+            logging_enabled = true
+            Log('Logging Initialized')
+        catch
+            logging_enabled = false
+            throwpoint = v:throwpoint
+            throw v:exception
+        endtry
+        logging_initialized = true
     endif
 enddef
 
@@ -35,7 +57,8 @@ export def GetExcludeCategories(): list<string>
     return logging_exclude->copy()
 enddef
 
-export def IsEnabled(category: string = '')
+export def IsEnabled(category_: any = ''): bool
+    var category: string = printf("%s", category_)
     return logging_enabled
         && (category->empty() || logging_exclude->index(category, 0, true) < 0)
 enddef
@@ -50,6 +73,7 @@ enddef
 #
 # NOTE: If the first arg is a function, it is not evaluated if logging is
 #       disabled or if the optional category is excluded.
+# NOTE: category is convered to a string (if not already a string).
 # NOTE: category is checked with ignore case, output as upper case.
 #
 #   - Log(msgOrFunc: string, category = '', stack = false, command = '')
@@ -60,11 +84,15 @@ enddef
 # If optional command, the command is run using execute() and the command
 # output is output to the log.
 #
-export def Log(msgOrFunc: any, category: string = '',
+export def Log(msgOrFunc: any, category_: any = '',
         stack: bool = false, command: string = '')
     if ! logging_enabled
         return
     endif
+    if !!category_ && type(category_) != v:t_enumvalue
+        Log('LOG CATEGORY NOT AN ENUMVALUE: ' .. category_, '', true)
+    endif
+    var category: string = printf("%s", category_)
     if !!category && logging_exclude->index(category, 0, true) >= 0
         return
     endif

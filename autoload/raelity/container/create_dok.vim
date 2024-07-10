@@ -19,6 +19,8 @@ import '../config.vim' as i_config
 # - header: list<string> = []  - additional text for file, typically imports.
 # - base_import = "import autoload 'raelity/container/dict_ok.vim'"
 # - base_name = "dict_ok.DictObjKeyBase"
+# - get_default = "null" -  What Get returns if no default specified;
+#                           if not specified, tries to guess a zero/null type.
 #
 #       var fname = CreateDOK('mystuff/foo.vim', 'SomeClassDict',
 #           'bar.SomeClass', 'list<string>',
@@ -38,16 +40,19 @@ import '../config.vim' as i_config
 #       export class SomeClassDict extends dict_ok.DictObjKeyBase
 #       ...
 
+const NO_DEFAULT = "NO_DEFAULT"
 
 # ResetDefaults restores these
 var reset_default_header: list<string> = []
 var reset_default_base_import = "import autoload 'raelity/container/dict_ok.vim'"
 var reset_default_base_name = "dict_ok.DictObjKeyBase"
+var reset_default_get_default = NO_DEFAULT
 
 # These can be individually changed
 export var default_header = reset_default_header
 export var default_base_import = reset_default_base_import
 export var default_base_name   = reset_default_base_name
+export var default_get_default   = reset_default_get_default
 
 export def CreateDOK(
         arg_target_fn: string,
@@ -56,10 +61,14 @@ export def CreateDOK(
         value_type: string,
         header: list<string> = default_header,
         base_import: string = default_base_import,
-        base_name: string = default_base_name)
+        base_name: string = default_base_name,
+        get_default: string = default_get_default)
+
+    # TODO: guess at "get_default" if not specified
 
     var lines = Interpolate(dict_class_name, key_type, value_type, header,
-                base_import, base_name)
+                base_import, base_name,
+                get_default != NO_DEFAULT ? get_default : "null")
 
     var pathinfo = i_config.GenFilePathInfo(arg_target_fn)
     var target_fn = pathinfo[0]
@@ -78,6 +87,7 @@ export def ResetDefaults()
     default_header = reset_default_header
     default_base_import = reset_default_base_import
     default_base_name   = reset_default_base_name
+    default_get_default   = reset_default_get_default
 enddef
 
 def Interpolate(
@@ -87,6 +97,7 @@ def Interpolate(
         header: list<string>,
         base_import: string,
         base_name: string
+        get_default: string
 ): list<string>
 
     var lines =<< trim eval END
@@ -98,23 +109,44 @@ def Interpolate(
         export class {dict_class_name} extends {base_name}
 
             def Put(key: KeyType, value: ValueType)
-                this._d[key.unique_object_id] = [ key, value ]
+                this._d[id(key)] = [ key, value ]
             enddef
 
-            def Get(key: KeyType): ValueType
-                return this._d[key.unique_object_id][1]
+            # If key not in dict, then return default.
+            # Probably get an error if key not found and no default specified
+            def Get(key: KeyType, default: any = {get_default}): ValueType
+                var val = this._d->get(id(key), null)
+                if val != null
+                    return val[1]
+                endif
+                return default
             enddef
 
-            def StringKeyToObj(key: string): KeyType
-                return this._d[key][0]
+            def HasKey(key: KeyType): bool
+                return this._d->hasKey(id(key))
             enddef
 
+            # Keys()/Values()/Items() don't lock can modify things deeper into dict
             def Keys(): list<KeyType>
-                # can optimize: for loop, inline StringKeyToObj
-                return this._d->keys()->mapnew((i, k) => this.StringKeyToObj(k))
+                return this._d->values()->mapnew((i, k) => k[0])
+            enddef
+
+            def Values(): list<ValueType>
+                return this._d->values()->mapnew((i, k) => k[1])
+            enddef
+
+            def Items(): list<any>
+                return this._d->values()
+            enddef
+
+            def HasStringKey(stringkey: KeyType): bool
+                return this._d->hasKey(stringkey)
+            enddef
+
+            def StringKeyToObj(stringkey: string): KeyType
+                return this._d[stringkey][0]
             enddef
         endclass
-
     END
 
     return flattennew([lines[0], ['', base_import], header, lines[1 :]])
@@ -179,10 +211,10 @@ CreateDOK('/tmp/foo0.vim', 'SomeClassDict', 'bar.SomeClass', 'list<string>',
     ['import "./bar.vim"'])
 CreateDOK('/tmp/foo1.vim', 'SomeClassDict', 'bar.SomeClass', 'list<string>',
     ['import "./bar.vim"'],
-    "import /bar/baz/my_dict_stuff.vim", "'my_dict_stuff.MyDictObjBase'")
+    "import /bar/baz/my_dict_stuff.vim", "'my_dict_stuff.MyDictObjKeyBase'")
 default_header = [ "import 'one'", "import 'two'", "import 'three'" ]
 default_base_import = "import '/tmp/foo' as xxx"
-default_base_name = "xxx.DictBase"
+default_base_name = "xxx.DictKeyBase"
 CreateDOK('/tmp/foo2.vim', 'SomeClassDict', 'SomeClass', 'list<string>')
 ResetDefaults()
 CreateDOK('/tmp/foo3.vim', 'SomeClassDict', 'SomeClass', 'list<string>')

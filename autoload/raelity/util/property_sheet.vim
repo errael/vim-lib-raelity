@@ -85,7 +85,7 @@ export def DisplayPropertyPopup(properties: list<string>,
 enddef
 
 export def PropertyDialogClose(winid: number)
-    i_log.Log(() => printf("PropertyDialogClose: %s %s", winid, winid_properties), 'diffopts')
+    i_log.Log(() => printf("PropertyDialogClose: %s %s", winid, winid_properties))
     winid_properties->remove(winid)
     winid_extras->remove(winid)
 enddef

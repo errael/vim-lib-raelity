@@ -2,6 +2,9 @@ vim9script
 
 # Generated key is of the form "<SNR>45_SomeClass@17".
 
+# NOTE: with the "id()" builtin this isn't needed,
+#       but the form of the key is interesting.
+
 export interface IObjKey
     var unique_object_id: string
 endinterface

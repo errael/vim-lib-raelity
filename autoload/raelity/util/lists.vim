@@ -8,9 +8,9 @@ vim9script
 ### working with lists
 ###
 
-def ListRandomize(l: list<any>): list<any>
+export def ListRandomize(l: list<any>): list<any>
     srand()
-    var v_list: list<func> = l->copy()
+    var v_list: list<any> = l->copy()
     var random_order_list: list<any>
     while v_list->len() > 0
         random_order_list->add(v_list->remove(rand() % v_list->len()))

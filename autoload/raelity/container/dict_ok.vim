@@ -5,10 +5,10 @@ vim9script
 
 # var dok = DictObjKey.new()
 
-import autoload './obj_key.vim'
+#import autoload './obj_key.vim'
 
 export abstract class DictObjKeyBase 
-
+    # The key in "_d" is "id(realkey); values in "_d" are "[ realkey, value ]"
     var _d: dict<list<any>>
 
     def len(): number
@@ -24,30 +24,53 @@ export abstract class DictObjKeyBase
     enddef
 endclass
 
-## For strict type checking, import this file to get "DictObjKeyBase"
-## copy the following and change KeyType/ValueType as needed.
-##
-## Note: "KeyType" must implement "obj_key.IObjKey".
+# For strict type checking, import this file to get "DictObjKeyBase"
+# copy the following and change KeyType/ValueType as needed.
+#
 
-type KeyType = obj_key.IObjKey
+##### ## Note: "KeyType" must implement "obj_key.IObjKey".
+
+type KeyType = any #obj_key.IObjKey
 type ValueType = any
 
 export class DictObjKey extends DictObjKeyBase
 
     def Put(key: KeyType, value: ValueType)
-        this._d[key.unique_object_id] = [ key, value ]
+        this._d[id(key)] = [ key, value ]
     enddef
 
-    def Get(key: KeyType): ValueType
-        return this._d[key.unique_object_id][1]
+    # If key not in dict, then return default.
+    # Probably get an error if key not found and no default specified
+    def Get(key: KeyType, default: any = null): ValueType
+        var val = this._d->get(id(key), null)
+        if val != null
+            return val[1]
+        endif
+        return default
     enddef
 
-    def StringKeyToObj(key: string): KeyType
-        return this._d[key][0]
+    def HasKey(key: KeyType): bool
+        return this._d->hasKey(id(key))
     enddef
 
+    # Keys()/Values()/Items() don't lock can modify things deeper into dict
     def Keys(): list<KeyType>
-        # can optimize: for loop, inline StringKeyToObj
-        return this._d->keys()->mapnew((i, k) => this.StringKeyToObj(k))
+        return this._d->values()->mapnew((i, k) => k[0])
+    enddef
+
+    def Values(): list<ValueType>
+        return this._d->values()->mapnew((i, k) => k[1])
+    enddef
+
+    def Items(): list<any>
+        return this._d->values()
+    enddef
+
+    def HasStringKey(stringkey: KeyType): bool
+        return this._d->hasKey(stringkey)
+    enddef
+
+    def StringKeyToObj(stringkey: string): KeyType
+        return this._d[stringkey][0]
     enddef
 endclass
