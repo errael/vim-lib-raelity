@@ -1,8 +1,11 @@
 vim9script
 
-import autoload 'raelity/container/obj_key.vim'
-
-export class MyClass implements obj_key.IObjKey
-    const unique_object_id = obj_key.GenerateKey() 
+export class MyClass
+    static var count = 1
+    const val: number
+    def new()
+        this.val = count
+        count += 1
+    enddef
 endclass
 
