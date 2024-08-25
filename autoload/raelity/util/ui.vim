@@ -25,12 +25,9 @@ enddef
 
 highlight UiUnderline term=underline cterm=underline gui=underline
 ConfigureUiHighlights({
-    heading: 'Todo',
-    popup: 'Todo',
-    alert_popup: 'Todo',
-    #heading: 'UiUnderline',
-    #popup: 'ColorColumn',
-    #alert_popup: 'PMenu',
+    heading: 'Todo',        # 'UiUnderline'
+    popup: 'Todo',          # 'ColorColumn'
+    alert_popup: 'Todo',    # 'PMenu'
 })
 
 #
@@ -39,6 +36,7 @@ ConfigureUiHighlights({
 #       tweak_options - used to extend the options given to popup_create
 #       at_mouse: bool - if true popup at mouse; default false
 #       header_line: number - >= 1, highlight that line with hl_heading
+#       modal: bool     - if false, allow drag and moved does not dismiss
 
 
 export def PopupMessage(msg: list<string>, extras: dict<any> = {}): number
@@ -59,11 +57,13 @@ export def PopupDialog(msg: list<string>, extras: dict<any> = {}): number
     return PopupMessageCommon(msg, extras)
 enddef
 
-def AddToTweakOptions(extras: dict<any>, tweak_options: dict<any>)
+# Update tweak_options with some default values.
+# Don't change tweak_options that are already set.
+export def AddToTweakOptions(extras: dict<any>, tweak_options: dict<any>, how = 'keep')
     if !extras->has_key('tweak_options')
         extras.tweak_options = {}
     endif
-    extras.tweak_options->extend(tweak_options)
+    extras.tweak_options->extend(tweak_options, how)
 enddef
 
 def DialogClickOrClose(winid: number, key: string): bool
@@ -96,14 +96,8 @@ def PopupMessageCommon(msg: list<string>, extras: dict<any> = {}): number
         border: [],
         padding: [1, 2, 1, 2],
         highlight: ui_highlights.popup,
-        drag: 1,
+        drag: true,
         mapping: false,
-
-        #close: 'click',
-        #mousemoved: 'any', moved: 'any',
-        #moved: [0, 0, 0, 0],
-        #mousemoved: [0, 0, 0, 0],
-        #filter: FilterCloseAnyKey
     }
 
     if extras->has_key('tweak_options')
@@ -115,16 +109,13 @@ def PopupMessageCommon(msg: list<string>, extras: dict<any> = {}): number
         options->extend({line: mp.screenrow, col: mp.screencol})
     endif
 
-    # Sigh!
-    if extras->get('no_close', false)
-        options->remove('close')
-    endif
-
     var out_msg: list<string> = msg->copy()
     var append_msgs: list<string>
     if options->get('close', '') == 'click'
-        append_msgs->extend(['Click on Popup to Dismiss.',
-                            'Drag border to move'])
+        append_msgs->add('Click on Popup to Dismiss.')
+    endif
+    if options->get('drag', false)
+        append_msgs->add('Drag border to move')
     endif
 
     if extras->has_key('append_msgs')
@@ -165,40 +156,33 @@ export def PopupAlert(msg_: list<string>, title: string = '', extras: dict<any> 
         i_log.Log(() => printf('ALERT: %s %s', title, msg_->join(';')))
     endif
 
-    # TODO: use PopupMessageCommon
-
-    var options = {
-        minwidth: MIN_POPUP_WIDTH,
-        tabpage: -1,
-        zindex: 300,
-        border: [],
-        padding: [1, 2, 1, 2],
+    var tweak_options = {
         highlight: ui_highlights.alert_popup,
-        close: 'click',
+        close: 'none',
+        drag: false,
         moved: 'any',
         mousemoved: 'any',
-        mapping: false,
         filter: FilterCloseAnyKey
         }
     if ! modal
-        options->extend({
-            drag: 1,
+        tweak_options->extend({
+            close: 'click',
+            drag: true,
             moved: [0, 0, 0],
             mousemoved: [0, 0, 0],
             filter: (_, _) => false,    # Pass through all the keys.
         })
     endif
-    if extras->has_key('tweak_options')
-        options->extend(extras.tweak_options)
-    endif
 
     if ! title->empty()
-        options.title = ' ' .. title .. ' '
+        tweak_options.title = ' ' .. title .. ' '
     endif
+
+    AddToTweakOptions(extras, tweak_options)
 
     var msg = center ? i_strings.Pad(msg_, 'c', - MIN_POPUP_WIDTH) : msg_
 
-    popup_create(msg, options)
+    PopupMessageCommon(msg, extras)
 enddef
 
 # vim:ts=8:sts=4:
