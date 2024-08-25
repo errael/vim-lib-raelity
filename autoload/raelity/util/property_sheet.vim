@@ -4,10 +4,7 @@ import autoload './ui.vim' as i_ui
 import autoload './strings.vim' as i_strings
 import autoload './log.vim' as i_log
 
-# at_mouse - defaults to false
-export def DisplayTextPopup(text: list<string>, extras: dict<any> = null_dict)
-    i_ui.PopupMessage(text, extras)
-enddef
+# TODO: Have a property sheet class? Currently only one at a time.
 
 # Property Sheet, typically modal
 #
@@ -67,15 +64,11 @@ var winid_extras: dict<dict<any>>
 export def DisplayPropertyPopup(properties: list<string>,
                                 state: dict<any>,
                                 extras: dict<any> = {}): number
-    if !extras->has_key('at_mouse')
-        extras.at_mouse = true
-    endif
+    extras->extend({at_mouse: true}, 'keep')
 
-    # Can't remove 'close' with popup_setoptions
-    # Insure no 'X' to dismiss. Clicking caused weird selections.
-    extras.no_close = true
+    # No automatic close on click.
+    i_ui.AddToTweakOptions(extras, {close: 'none'}, 'force')
 
-    # TODO: should probably invoke something like i_ui.PopupDialog()
     var winid = i_ui.PopupDialog(FormattedProperties(properties, state), extras)
     popup_setoptions(winid, { filter: PropertyDialogClickOrClose })
     winid_properties[winid] = properties
@@ -99,7 +92,6 @@ export def AddRadioBtnGroup(radio_btn_group: list<string>)
         i_log.Log(() => printf("AddRadioBtnGroup: %s", radio_btn_group))
         radio_btn_groups->add(radio_btn_group)
         PopulateRadioButtons()
-
     endif
 enddef
 
