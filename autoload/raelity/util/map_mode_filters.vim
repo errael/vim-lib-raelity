@@ -172,8 +172,10 @@ const expect_mode_bits_table = {
 #    echo printf("%s: 0x%04x", k, v)
 #endfor
 
-import autoload './vim_extra.vim' as vass
-var DictUniqueCopy = vass.DictUniqueCopy
+#import autoload './vim_extra.vim' as i_dicts
+import '/src/lib/vim/autoload/raelity/util/dicts.vim' as i_dicts
+
+var DictUnique = i_dicts.DictUnique
 
 if expect_mode_bits_table != mode_bits_table
     def Pr(tag: string, d: dict<any>)
@@ -183,7 +185,7 @@ if expect_mode_bits_table != mode_bits_table
         endfor
     enddef
     echo 'ERROR in mode_bites_table'
-    var [ d1, d2 ] = DictUniqueCopy(expect_mode_bits_table, mode_bits_table)
+    var [ d1, d2 ] = DictUnique(expect_mode_bits_table, mode_bits_table, {copy: true})
     Pr('    expected:', d1)
     Pr('    got:', d2)
     echo ' '
